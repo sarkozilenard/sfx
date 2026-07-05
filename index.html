@@ -1,0 +1,1915 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js"></script>
+<title>SFX Generátor · madebylenard</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    background: radial-gradient(1100px 550px at 50% -10%, #1c0f06 0%, #0a0603 45%, #030201 100%);
+    color: #ece7e0;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    padding: 24px 16px 48px;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; }
+  header {
+    margin-bottom: 28px; display: flex; flex-direction: column;
+    align-items: center; text-align: center; position: relative;
+    padding-top: 18px;
+  }
+  .brand-star {
+    position: relative; z-index: 1; font-size: 22px; color: #bcac8c;
+    margin-bottom: 8px; text-shadow: 0 0 16px #bcac8c88;
+  }
+  h1 {
+    position: relative; z-index: 1;
+    font-family: 'JetBrains Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+    font-size: clamp(28px, 6vw, 42px); font-weight: 700;
+    letter-spacing: -0.01em; line-height: 1.05;
+    text-shadow: 0 0 30px #bcac8c55;
+  }
+  .credit {
+    position: relative; z-index: 1; margin-top: 10px;
+    font-size: 15px; font-weight: 700; letter-spacing: 0.1em;
+    color: #bcac8c; text-shadow: 0 0 12px #bcac8c66;
+  }
+  .cats {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 8px; margin-bottom: 24px;
+  }
+  .cat-btn {
+    padding: 12px 10px; border-radius: 10px; cursor: pointer;
+    border: 1px solid #2a2015; background: #120e0a; color: #a89a8a;
+    font-weight: 700; font-size: 13px; text-align: left;
+    text-transform: uppercase; letter-spacing: 0.03em;
+    font-family: inherit; transition: all .15s;
+  }
+  .cat-btn.active {
+    border-color: #bcac8c;
+    background: linear-gradient(180deg, #bcac8c22, #bcac8c0d);
+    color: #fff; box-shadow: 0 0 18px #bcac8c33;
+  }
+  .panel {
+    background: #100c08; border: 1px solid #251d13;
+    border-radius: 16px; padding: 22px 20px;
+    box-shadow: 0 20px 60px #00000066;
+  }
+  .panel-title { font-size: 20px; font-weight: 800; margin-bottom: 4px; }
+  .panel-desc { color: #8d8175; font-size: 13px; margin-bottom: 16px; }
+  .variants { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 20px; }
+  .var-btn {
+    padding: 6px 14px; border-radius: 999px; cursor: pointer;
+    font-size: 13px; font-weight: 600; font-family: inherit;
+    border: 1px solid #2e2618; background: transparent; color: #b3a696;
+    transition: all .15s;
+  }
+  .var-btn.active { border-color: #bcac8c; background: #bcac8c; color: #1a0d06; }
+  .wave {
+    height: 90px; border-radius: 10px; margin-bottom: 20px;
+    background: #0a0704; border: 1px solid #201a12;
+    position: relative; overflow: hidden; cursor: grab;
+  }
+  .wave:active { cursor: grabbing; }
+  .wave canvas { width: 100%; height: 100%; display: block; }
+  .wave .placeholder {
+    position: absolute; inset: 0; display: flex;
+    align-items: center; justify-content: center;
+    color: #4d4536; font-size: 12px; letter-spacing: 0.1em; text-align: center; padding: 0 12px;
+  }
+  .drag-hint {
+    position: absolute; right: 8px; bottom: 6px;
+    font-size: 10px; letter-spacing: 0.03em; color: #6b6250;
+    background: #0a070499; padding: 2px 7px; border-radius: 999px;
+    pointer-events: none; transition: opacity .15s;
+  }
+  @media (max-width: 640px) { .drag-hint { display: none; } }
+  .sliders { display: grid; gap: 16px; margin-bottom: 24px; }
+  .slider-head {
+    display: flex; justify-content: space-between;
+    font-size: 12px; margin-bottom: 6px; color: #b3a696; font-weight: 600;
+  }
+  .slider-val { color: #bcac8c; font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: #bcac8c; cursor: pointer; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; }
+  .history { margin-top: 22px; padding-top: 18px; border-top: 1px solid #201a12; }
+  .history-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .history-title {
+    font-size: 12px; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: #8d8175;
+  }
+  .history-clear {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.02em;
+    color: #8d8175; background: none; border: none; cursor: pointer;
+    font-family: inherit; text-decoration: underline; padding: 0;
+    transition: color .15s;
+  }
+  .history-clear:hover { color: #d99; }
+  .history-list { display: flex; flex-wrap: wrap; gap: 8px; }
+  .history-chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 7px 8px 7px 12px; border-radius: 999px; cursor: pointer;
+    font-size: 12px; font-weight: 600; font-family: inherit;
+    border: 1px solid #2e2618; background: #120e0a; color: #b3a696;
+    transition: all .15s; white-space: nowrap;
+  }
+  .history-chip:hover { border-color: #bcac8c; color: #fff; }
+  .history-chip.current { border-color: #bcac8c; background: #bcac8c22; color: #fff; }
+  .history-chip .x {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 16px; height: 16px; border-radius: 50%;
+    color: #7a6f5f; font-size: 12px; line-height: 1;
+    transition: all .15s;
+  }
+  .history-chip .x:hover { background: #d99a; color: #1a0d06; }
+  .btn {
+    padding: 14px 20px; border-radius: 12px; cursor: pointer;
+    font-size: 14px; font-weight: 700; font-family: inherit; border: none;
+  }
+  .btn-play {
+    flex: 1 1 160px; font-size: 15px; font-weight: 800;
+    background: linear-gradient(135deg, #c0ac8c, #bcac8c);
+    color: #1a0d02; letter-spacing: 0.02em;
+    box-shadow: 0 0 24px #bcac8c55;
+  }
+  .btn-rand { flex: 1 1 140px; border: 1px solid #3a2e1c; background: #181208; color: #ecdcc4; }
+  .btn-dl { flex: 1 1 140px; border: 1px solid #bcac8c; background: transparent; color: #c0ac8c; }
+  .btn:disabled { opacity: 0.6; }
+  footer { margin-top: 20px; font-size: 12px; color: #7a6f5f; text-align: center; }
+  .mobile-hint {
+    display: none; font-size: 12px; color: #b3a696;
+    text-align: center; margin-bottom: 14px; letter-spacing: 0.01em;
+  }
+  @media (max-width: 640px) {
+    .mobile-hint { display: block; }
+  }
+  .iab-banner {
+    display: none; margin-bottom: 20px; padding: 14px 16px;
+    border: 1px solid #bcac8c; border-radius: 12px;
+    background: #bcac8c14; color: #ece7e0;
+    font-size: 13px; line-height: 1.5; text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="iab-banner" id="iabBanner">📲 Úgy tűnik, egy alkalmazáson belüli böngészőből (pl. Instagram, Messenger) nyitottad meg ezt az oldalt. A hanglejátszás itt működik, de a WAV letöltéshez nyisd meg az oldalt a telefonod rendes böngészőjében — keresd a jobb felső ⋮ / ··· menüben a „Megnyitás böngészőben” opciót.</div>
+  <header>
+    <div class="brand-star" aria-hidden="true">✦</div>
+    <h1>SFX GENERÁTOR</h1>
+    <span class="credit">madebylenard</span>
+  </header>
+  <div class="cats" id="cats"></div>
+  <div class="panel">
+    <div class="panel-title" id="catName"></div>
+    <div class="panel-desc" id="catDesc"></div>
+    <div class="variants" id="variants"></div>
+    <div class="wave" id="waveBox" draggable="true">
+      <canvas id="waveCanvas"></canvas>
+      <div class="placeholder" id="wavePh">LEJÁTSZÁS UTÁN ITT JELENIK MEG A HULLÁMFORMA</div>
+      <div class="drag-hint" id="dragHint">⠿ Húzd ki fájlként (Chrome/Edge)</div>
+    </div>
+    <div class="sliders" id="sliders"></div>
+    <div class="mobile-hint">🔇 Kapcsold ki a néma módot, hogy halld az előnézetet</div>
+    <div class="actions">
+      <button class="btn btn-play" id="btnPlay">▶ Lejátszás</button>
+      <button class="btn btn-rand" id="btnRand">🎲 Véletlen variáció</button>
+      <button class="btn btn-dl" id="btnDl">⬇ WAV</button>
+      <button class="btn btn-dl" id="btnDlMp3">⬇ MP3</button>
+    </div>
+    <div class="history" id="historyBox" style="display:none;">
+      <div class="history-head">
+        <div class="history-title">Előzmények</div>
+        <button class="history-clear" id="btnClearHistory" type="button">Összes törlése</button>
+      </div>
+      <div class="history-list" id="historyList"></div>
+    </div>
+  </div>
+  <footer>A hangokat szabadon felhasználhatod a videóidban!</footer>
+</div>
+<script>
+const SR = 44100;
+
+/* ---------- segédfüggvények ---------- */
+
+function makeNoise(ctx, dur) {
+  const len = Math.max(1, Math.ceil(ctx.sampleRate * dur));
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  return buf;
+}
+
+function noiseSrc(ctx, dur) {
+  const s = ctx.createBufferSource();
+  s.buffer = makeNoise(ctx, dur);
+  return s;
+}
+
+function noiseBurst(ctx, t, dur, fc, q, gainVal, dest) {
+  const src = noiseSrc(ctx, dur + 0.02);
+  const bp = ctx.createBiquadFilter();
+  bp.type = "bandpass";
+  bp.frequency.value = fc;
+  bp.Q.value = q;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(gainVal, t + 0.002);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(bp).connect(g).connect(dest);
+  src.start(t);
+}
+
+function partial(ctx, t, freq, dur, gainVal, dest, type = "sine") {
+  const o = ctx.createOscillator();
+  o.type = type;
+  o.frequency.value = freq;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(gainVal, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(dest);
+  o.start(t);
+  o.stop(t + dur + 0.05);
+}
+
+function thump(ctx, t, f0, f1, dur, gainVal, dest) {
+  const o = ctx.createOscillator();
+  o.type = "sine";
+  o.frequency.setValueAtTime(f0, t);
+  o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(gainVal, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(dest);
+  o.start(t);
+  o.stop(t + dur + 0.05);
+}
+
+function softClip(ctx, amount) {
+  const ws = ctx.createWaveShaper();
+  const n = 1024;
+  const curve = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const x = (i / (n - 1)) * 2 - 1;
+    curve[i] = Math.tanh(x * amount) / Math.tanh(amount);
+  }
+  ws.curve = curve;
+  return ws;
+}
+
+function makeReverb(ctx, dur, decayPow) {
+  const len = Math.max(1, Math.ceil(ctx.sampleRate * dur));
+  const ir = ctx.createBuffer(2, len, ctx.sampleRate);
+  for (let c = 0; c < 2; c++) {
+    const d = ir.getChannelData(c);
+    for (let i = 0; i < len; i++) {
+      d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decayPow);
+    }
+  }
+  const conv = ctx.createConvolver();
+  conv.buffer = ir;
+  return conv;
+}
+
+const R = (a, b) => a + Math.random() * (b - a);
+
+function pluckTone(ctx, t, freq, dur, gainVal, brightness, dest, detuneCents) {
+  [
+    [1, 1],
+    [2, 0.55 * brightness],
+    [3, 0.32 * brightness],
+    [4.01, 0.18 * brightness * brightness],
+    [5.02, 0.1 * brightness * brightness],
+  ].forEach(([r, relGain], i) => {
+    const o = ctx.createOscillator();
+    o.type = "triangle";
+    o.frequency.value = freq * r;
+    o.detune.value = detuneCents;
+    const decay = Math.max(0.05, dur * (1 - i * 0.12));
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(gainVal * relGain, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + decay);
+    o.connect(g).connect(dest);
+    o.start(t);
+    o.stop(t + decay + 0.05);
+  });
+}
+
+function bowedString(ctx, t, freq, dur, brightness, dest, deep) {
+  const attack = 0.09;
+  const release = 0.18;
+  const lp = ctx.createBiquadFilter();
+  lp.type = "lowpass";
+  lp.frequency.value = (deep ? 1400 : 3000) * brightness;
+  lp.Q.value = 1.5;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(0.5, t + attack);
+  g.gain.setValueAtTime(0.5, t + dur);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur + release);
+  lp.connect(g).connect(dest);
+
+  const vibrato = ctx.createOscillator();
+  vibrato.type = "sine";
+  vibrato.frequency.value = 5.2;
+  const vibDepth = ctx.createGain();
+  vibDepth.gain.value = 16;
+  vibrato.connect(vibDepth);
+  vibrato.start(t);
+  vibrato.stop(t + dur + release + 0.1);
+
+  [0, -8, 9].forEach((cents) => {
+    const o = ctx.createOscillator();
+    o.type = "sawtooth";
+    o.frequency.value = freq;
+    o.detune.value = cents;
+    vibDepth.connect(o.detune);
+    o.connect(lp);
+    o.start(t);
+    o.stop(t + dur + release + 0.1);
+  });
+}
+
+function fluteTone(ctx, t, freq, dur, brightness, dest) {
+  const attack = 0.07;
+  const release = 0.15;
+  const o = ctx.createOscillator();
+  o.type = "sine";
+  o.frequency.value = freq;
+  const lp = ctx.createBiquadFilter();
+  lp.type = "lowpass";
+  lp.frequency.value = freq * (3 + brightness * 4);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(0.5, t + attack);
+  g.gain.setValueAtTime(0.5, t + dur);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur + release);
+  o.connect(lp).connect(g).connect(dest);
+  o.start(t);
+  o.stop(t + dur + release + 0.05);
+
+  const ns = noiseSrc(ctx, dur + release + 0.1);
+  const bp = ctx.createBiquadFilter();
+  bp.type = "bandpass";
+  bp.frequency.value = freq * 1.5;
+  bp.Q.value = 1.2;
+  const ng = ctx.createGain();
+  ng.gain.setValueAtTime(0.0001, t);
+  ng.gain.linearRampToValueAtTime(0.09 * brightness, t + attack);
+  ng.gain.setValueAtTime(0.09 * brightness, t + dur);
+  ng.gain.exponentialRampToValueAtTime(0.0001, t + dur + release);
+  ns.connect(bp).connect(ng).connect(dest);
+  ns.start(t);
+}
+
+/* ---------- hangkategóriák ---------- */
+
+const CATEGORIES = [
+  {
+    id: "whoosh",
+    name: "Whoosh",
+    desc: "Átvezetésekhez, gyors vágásokhoz",
+    variants: ["Low", "Mid", "High", "Airy", "Dark"],
+    sliders: [
+      { id: "len", label: "Hossz", min: 0.3, max: 2.2, step: 0.05, def: 0.8, unit: "s" },
+      { id: "pitch", label: "Hangmagasság", min: 0.5, max: 2, step: 0.05, def: 1 },
+      { id: "res", label: "Élesség", min: 1, max: 14, step: 0.5, def: 5 },
+    ],
+    duration: (p) => p.len + 0.15,
+    build: (ctx, p) => {
+      const base = { Low: 240, Mid: 850, High: 2400, Airy: 4200, Dark: 140 }[p.variant] * p.pitch;
+      const src = noiseSrc(ctx, p.len + 0.1);
+      const bp = ctx.createBiquadFilter();
+      bp.type = "bandpass";
+      bp.Q.value = p.res;
+      bp.frequency.setValueAtTime(base * 0.35, 0);
+      bp.frequency.exponentialRampToValueAtTime(base * 2.2, p.len * 0.45);
+      bp.frequency.exponentialRampToValueAtTime(base * 0.5, p.len);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, 0);
+      g.gain.exponentialRampToValueAtTime(0.9, p.len * 0.42);
+      g.gain.exponentialRampToValueAtTime(0.0001, p.len);
+      src.connect(bp).connect(g).connect(ctx.destination);
+      src.start(0);
+    },
+  },
+  {
+    id: "swoosh-impact",
+    name: "Swoosh + Impact",
+    desc: "Title card bevillanásához, hangsúlyos vágáshoz",
+    variants: ["Soft Hit", "Punch", "Deep Slam", "Snap"],
+    sliders: [
+      { id: "len", label: "Hossz", min: 0.5, max: 2, step: 0.05, def: 0.9, unit: "s" },
+      { id: "pitch", label: "Hangmagasság", min: 0.5, max: 2, step: 0.05, def: 1 },
+      { id: "hit", label: "Ütés ereje", min: 0.3, max: 1.5, step: 0.05, def: 1 },
+    ],
+    duration: (p) => p.len + 0.6,
+    build: (ctx, p) => {
+      const wLen = p.len * 0.75;
+      const base = 700 * p.pitch;
+      const src = noiseSrc(ctx, wLen + 0.05);
+      const bp = ctx.createBiquadFilter();
+      bp.type = "bandpass";
+      bp.Q.value = 4;
+      bp.frequency.setValueAtTime(base * 0.3, 0);
+      bp.frequency.exponentialRampToValueAtTime(base * 2.5, wLen);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, 0);
+      g.gain.exponentialRampToValueAtTime(0.8, wLen * 0.9);
+      g.gain.linearRampToValueAtTime(0.0001, wLen + 0.02);
+      src.connect(bp).connect(g).connect(ctx.destination);
+      src.start(0);
+
+      const tHit = wLen;
+      const v = p.variant;
+      if (v === "Soft Hit") {
+        thump(ctx, tHit, 140 * p.pitch, 45, 0.35, 0.8 * p.hit, ctx.destination);
+        noiseBurst(ctx, tHit, 0.1, 350, 1.2, 0.35 * p.hit, ctx.destination);
+      } else if (v === "Punch") {
+        thump(ctx, tHit, 180 * p.pitch, 50, 0.3, 1.0 * p.hit, ctx.destination);
+        noiseBurst(ctx, tHit, 0.06, 1200, 1.5, 0.5 * p.hit, ctx.destination);
+      } else if (v === "Deep Slam") {
+        thump(ctx, tHit, 110 * p.pitch, 32, 0.55, 1.1 * p.hit, ctx.destination);
+        noiseBurst(ctx, tHit, 0.18, 220, 1, 0.45 * p.hit, ctx.destination);
+      } else {
+        noiseBurst(ctx, tHit, 0.03, 2500 * p.pitch, 2, 0.9 * p.hit, ctx.destination);
+        thump(ctx, tHit, 300 * p.pitch, 120, 0.12, 0.5 * p.hit, ctx.destination);
+      }
+    },
+  },
+  {
+    id: "cinematic-impact",
+    name: "Cinematic Impact",
+    desc: "Trailer-stílusú mély becsapódások drámai pillanatokhoz",
+    variants: ["Heavy Boom", "Sub Boom", "Trailer Hit", "Distant Boom", "Tight Punch"],
+    sliders: [
+      { id: "pitch", label: "Hangmagasság", min: 0.6, max: 1.6, step: 0.05, def: 1 },
+      { id: "decay", label: "Lecsengés", min: 0.4, max: 2.4, step: 0.05, def: 1.1, unit: "s" },
+      { id: "weight", label: "Súly", min: 0.3, max: 1.5, step: 0.05, def: 1 },
+    ],
+    duration: (p) => p.decay + 1.4,
+    build: (ctx, p) => {
+      const v = p.variant;
+      const D = v === "Tight Punch" ? p.decay * 0.45 : p.decay;
+      const verb = makeReverb(ctx, 1.3, 2.1);
+      const wet = ctx.createGain();
+      wet.gain.value = v === "Distant Boom" ? 0.9 : 0.4;
+      verb.connect(wet).connect(ctx.destination);
+      const out = (n) => { n.connect(ctx.destination); n.connect(verb); };
+      const t = 0.02;
+
+      const bf = (v === "Sub Boom" ? 68 : 88) * p.pitch;
+      const body = ctx.createOscillator();
+      body.type = "sine";
+      body.frequency.setValueAtTime(bf * 2.2, t);
+      body.frequency.exponentialRampToValueAtTime(bf, t + 0.09);
+      body.frequency.exponentialRampToValueAtTime(bf * 0.7, t + D);
+      const bg = ctx.createGain();
+      bg.gain.setValueAtTime(1.0 * p.weight, t);
+      bg.gain.exponentialRampToValueAtTime(0.0001, t + D);
+      let chain = body;
+      if (p.weight > 1.05) {
+        const ws = softClip(ctx, 1 + p.weight);
+        body.connect(ws);
+        chain = ws;
+      }
+      chain.connect(bg);
+      out(bg);
+      body.start(t);
+      body.stop(t + D + 0.1);
+
+      const ns = noiseSrc(ctx, D);
+      const lp = ctx.createBiquadFilter();
+      lp.type = "lowpass";
+      lp.frequency.value = v === "Distant Boom" ? 90 : 140;
+      const ng = ctx.createGain();
+      ng.gain.setValueAtTime(0.5 * p.weight, t);
+      ng.gain.exponentialRampToValueAtTime(0.0001, t + D * 0.9);
+      ns.connect(lp).connect(ng);
+      out(ng);
+      ns.start(t);
+
+      if (v === "Heavy Boom" || v === "Tight Punch") {
+        noiseBurst(ctx, t, 0.02, 2400 * p.pitch, 1.8, 0.5 * p.weight, ctx.destination);
+      }
+      if (v === "Trailer Hit") {
+        const cb = 880 * p.pitch;
+        [[1, 0.4], [2.42, 0.22], [3.91, 0.12]].forEach(([r, g]) =>
+          partial(ctx, t, cb * r, 0.3, g, verb)
+        );
+        [[1, 0.3], [2.42, 0.15]].forEach(([r, g]) =>
+          partial(ctx, t, cb * r, 0.18, g, ctx.destination)
+        );
+      }
+    },
+  },
+  {
+    id: "riser",
+    name: "Riser",
+    desc: "Feszültségépítés CTA vagy punchline előtt",
+    variants: ["Noise Riser", "Tonal Riser", "Hybrid + Hit", "Metallic", "Synth Cluster"],
+    sliders: [
+      { id: "len", label: "Hossz", min: 0.8, max: 4, step: 0.1, def: 1.8, unit: "s" },
+      { id: "pitch", label: "Hangmagasság", min: 0.5, max: 2, step: 0.05, def: 1 },
+      { id: "tension", label: "Feszültség", min: 0.3, max: 1.5, step: 0.05, def: 1 },
+    ],
+    duration: (p) => {
+      if (p.variant === "Metallic" || p.variant === "Synth Cluster") return p.len + 1.8;
+      return p.len + (p.variant === "Hybrid + Hit" ? 0.6 : 0.1);
+    },
+    build: (ctx, p) => {
+      const L = p.len;
+      const v = p.variant;
+
+      if (v === "Metallic" || v === "Synth Cluster") {
+        const verb = makeReverb(ctx, 1.7, 2.4);
+        const wet = ctx.createGain();
+        wet.gain.value = 0.55;
+        verb.connect(wet).connect(ctx.destination);
+        const out = (n) => { n.connect(ctx.destination); n.connect(verb); };
+
+        if (v === "Metallic") {
+          const sub = ctx.createOscillator();
+          sub.type = "sine";
+          sub.frequency.setValueAtTime(58 * p.pitch, 0);
+          sub.frequency.linearRampToValueAtTime(82 * p.pitch, L);
+          const sg = ctx.createGain();
+          sg.gain.setValueAtTime(0.001, 0);
+          sg.gain.exponentialRampToValueAtTime(0.55, L);
+          sg.gain.exponentialRampToValueAtTime(0.0001, L + 0.9);
+          sub.connect(sg);
+          out(sg);
+          sub.start(0);
+          sub.stop(L + 1);
+
+          const base = 370 * p.pitch;
+          [[1, 0.16], [2.25, 0.11], [2.8, 0.09], [4.3, 0.07], [5.7, 0.05], [11.3, 0.03]]
+            .forEach(([r, g0]) => {
+              const o = ctx.createOscillator();
+              o.type = "sine";
+              o.frequency.setValueAtTime(base * r * 0.72, 0);
+              o.frequency.exponentialRampToValueAtTime(base * r * 1.28, L);
+              const g = ctx.createGain();
+              g.gain.setValueAtTime(0.0008, 0);
+              g.gain.exponentialRampToValueAtTime(g0 * p.tension, L);
+              g.gain.exponentialRampToValueAtTime(0.0001, L + 0.5);
+              o.connect(g);
+              out(g);
+              o.start(0);
+              o.stop(L + 0.7);
+            });
+
+          const ns = noiseSrc(ctx, L + 0.1);
+          const hp = ctx.createBiquadFilter();
+          hp.type = "highpass";
+          hp.frequency.setValueAtTime(1500, 0);
+          hp.frequency.exponentialRampToValueAtTime(5200, L);
+          const ng = ctx.createGain();
+          ng.gain.setValueAtTime(0.001, 0);
+          ng.gain.exponentialRampToValueAtTime(0.14 * p.tension, L);
+          ng.gain.linearRampToValueAtTime(0.0001, L + 0.05);
+          ns.connect(hp).connect(ng);
+          out(ng);
+          ns.start(0);
+        } else {
+          const f0 = 200 * p.pitch;
+          [1, 1.048, 0.952, 1.005].forEach((m) => {
+            const o = ctx.createOscillator();
+            o.type = "sawtooth";
+            o.frequency.setValueAtTime(f0 * m, 0);
+            o.frequency.exponentialRampToValueAtTime(f0 * m * 2.3, L);
+            const lp = ctx.createBiquadFilter();
+            lp.type = "lowpass";
+            lp.Q.value = 1.5;
+            lp.frequency.setValueAtTime(380, 0);
+            lp.frequency.exponentialRampToValueAtTime(2800 * p.tension, L);
+            const g = ctx.createGain();
+            g.gain.setValueAtTime(0.001, 0);
+            g.gain.exponentialRampToValueAtTime(0.16, L);
+            g.gain.exponentialRampToValueAtTime(0.0001, L + 0.35);
+            o.connect(lp).connect(g);
+            out(g);
+            o.start(0);
+            o.stop(L + 0.5);
+          });
+        }
+        return;
+      }
+
+      if (p.variant !== "Tonal Riser") {
+        const src = noiseSrc(ctx, L + 0.05);
+        const hp = ctx.createBiquadFilter();
+        hp.type = "highpass";
+        hp.frequency.setValueAtTime(150, 0);
+        hp.frequency.exponentialRampToValueAtTime(3800 * p.pitch, L);
+        hp.Q.value = 2 * p.tension;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.02, 0);
+        g.gain.exponentialRampToValueAtTime(0.75, L);
+        g.gain.linearRampToValueAtTime(0.0001, L + 0.03);
+        src.connect(hp).connect(g).connect(ctx.destination);
+        src.start(0);
+      }
+      if (p.variant !== "Noise Riser") {
+        [0, 7, -7].forEach((det) => {
+          const o = ctx.createOscillator();
+          o.type = "sawtooth";
+          o.detune.value = det * p.tension * 3;
+          o.frequency.setValueAtTime(75 * p.pitch, 0);
+          o.frequency.exponentialRampToValueAtTime(310 * p.pitch, L);
+          const lp = ctx.createBiquadFilter();
+          lp.type = "lowpass";
+          lp.frequency.setValueAtTime(300, 0);
+          lp.frequency.exponentialRampToValueAtTime(3000 * p.tension, L);
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0.001, 0);
+          g.gain.exponentialRampToValueAtTime(0.22, L);
+          g.gain.linearRampToValueAtTime(0.0001, L + 0.03);
+          o.connect(lp).connect(g).connect(ctx.destination);
+          o.start(0);
+          o.stop(L + 0.1);
+        });
+      }
+      if (p.variant === "Hybrid + Hit") {
+        thump(ctx, L, 160 * p.pitch, 40, 0.4, 1.0, ctx.destination);
+        noiseBurst(ctx, L, 0.12, 400, 1.2, 0.5, ctx.destination);
+      }
+    },
+  },
+  {
+    id: "sub-drop",
+    name: "Bass Drop",
+    desc: "Mély puffanás hangsúlyos pillanatokhoz",
+    variants: ["Clean", "Distorted", "808 Style", "Fall"],
+    sliders: [
+      { id: "len", label: "Hossz", min: 0.4, max: 2.5, step: 0.05, def: 1.1, unit: "s" },
+      { id: "pitch", label: "Hangmagasság", min: 0.6, max: 1.8, step: 0.05, def: 1 },
+      { id: "drive", label: "Torzítás", min: 1, max: 8, step: 0.5, def: 2 },
+    ],
+    duration: (p) => p.len + 0.2,
+    build: (ctx, p) => {
+      const v = p.variant;
+      const f0 = (v === "Fall" ? 400 : v === "808 Style" ? 130 : 95) * p.pitch;
+      const f1 = v === "Fall" ? 45 : 27;
+      const o = ctx.createOscillator();
+      o.type = "sine";
+      o.frequency.setValueAtTime(f0, 0);
+      o.frequency.exponentialRampToValueAtTime(f1, p.len);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(v === "808 Style" ? 1.1 : 0.9, 0.002);
+      g.gain.exponentialRampToValueAtTime(0.0001, p.len);
+      let chain = o;
+      if (v === "Distorted" || (v === "808 Style" && p.drive > 1.5)) {
+        const ws = softClip(ctx, p.drive);
+        o.connect(ws);
+        chain = ws;
+      }
+      chain.connect(g).connect(ctx.destination);
+      if (v === "808 Style") noiseBurst(ctx, 0, 0.02, 3000, 1.5, 0.4, ctx.destination);
+      o.start(0);
+      o.stop(p.len + 0.1);
+    },
+  },
+  {
+    id: "pop-click",
+    name: "Pop / Click",
+    desc: "UI-hangok szöveg megjelenéséhez, felsorolásokhoz",
+    variants: ["Pop", "Click", "Bubble", "UI Tick", "Double Pop", "Mouse Click"],
+    sliders: [
+      { id: "pitch", label: "Hangmagasság", min: 0.5, max: 2.5, step: 0.05, def: 1 },
+      { id: "punch", label: "Erő", min: 0.3, max: 1.3, step: 0.05, def: 0.8 },
+    ],
+    duration: (p) => (p.variant === "Double Pop" ? 0.35 : 0.25),
+    build: (ctx, p) => {
+      const v = p.variant;
+      const pop = (t, fMul) => {
+        const o = ctx.createOscillator();
+        o.type = "sine";
+        o.frequency.setValueAtTime(950 * p.pitch * fMul, t);
+        o.frequency.exponentialRampToValueAtTime(280 * p.pitch * fMul, t + 0.06);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(p.punch, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+        o.connect(g).connect(ctx.destination);
+        o.start(t);
+        o.stop(t + 0.12);
+      };
+      if (v === "Pop") pop(0, 1);
+      else if (v === "Double Pop") { pop(0, 0.85); pop(0.11, 1.15); }
+      else if (v === "Click") noiseBurst(ctx, 0, 0.015, 3800 * p.pitch, 3, p.punch, ctx.destination);
+      else if (v === "Mouse Click") {
+        noiseBurst(ctx, 0, 0.006, 4500 * p.pitch, 4, p.punch, ctx.destination);
+        noiseBurst(ctx, 0.09, 0.008, 3200 * p.pitch, 3.5, p.punch * 0.6, ctx.destination);
+      } else if (v === "UI Tick") {
+        noiseBurst(ctx, 0, 0.01, 5200 * p.pitch, 5, p.punch * 0.7, ctx.destination);
+        partial(ctx, 0, 2200 * p.pitch, 0.05, p.punch * 0.3, ctx.destination);
+      } else {
+        const o = ctx.createOscillator();
+        o.type = "sine";
+        o.frequency.setValueAtTime(380 * p.pitch, 0);
+        o.frequency.exponentialRampToValueAtTime(920 * p.pitch, 0.1);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(p.punch * 0.9, 0.002);
+        g.gain.exponentialRampToValueAtTime(0.0001, 0.14);
+        o.connect(g).connect(ctx.destination);
+        o.start(0);
+        o.stop(0.2);
+      }
+    },
+  },
+  {
+    id: "glitch",
+    name: "Glitch",
+    desc: "Modern, techos átvezetés",
+    variants: ["Digital", "Stutter", "Data Noise", "Scramble"],
+    sliders: [
+      { id: "len", label: "Hossz", min: 0.25, max: 1.4, step: 0.05, def: 0.6, unit: "s" },
+      { id: "pitch", label: "Hangmagasság", min: 0.5, max: 2.5, step: 0.05, def: 1 },
+      { id: "density", label: "Sűrűség", min: 0.3, max: 1.5, step: 0.05, def: 1 },
+    ],
+    duration: (p) => p.len + 0.1,
+    build: (ctx, p) => {
+      const v = p.variant;
+      const ws = softClip(ctx, 3);
+      const master = ctx.createGain();
+      master.gain.value = 0.5;
+      ws.connect(master).connect(ctx.destination);
+      if (v === "Stutter") {
+        const f = R(400, 1400) * p.pitch;
+        const step = 0.055 / p.density;
+        for (let t = 0; t < p.len; t += step) {
+          partial(ctx, t, f, step * 0.6, 0.7 * (1 - t / p.len / 1.5), ws, "square");
+        }
+      } else {
+        const n = Math.round(14 * p.density * (p.len / 0.6) + 6);
+        for (let i = 0; i < n; i++) {
+          const t = R(0, p.len * 0.95);
+          const d = R(0.015, 0.05);
+          if (v === "Data Noise" || (v === "Scramble" && Math.random() < 0.5)) {
+            noiseBurst(ctx, t, d, R(800, 6000) * p.pitch, R(2, 8), 0.6, ws);
+          } else {
+            partial(ctx, t, R(200, 3200) * p.pitch, d, 0.55, ws, Math.random() < 0.5 ? "square" : "sawtooth");
+          }
+        }
+      }
+    },
+  },
+  {
+    id: "keyboard",
+    name: "Keyboard Typing",
+    desc: "Gépelés hangok — folyamathoz, szövegíráshoz",
+    variants: ["Mechanical", "Membrane", "Laptop", "Typewriter", "Single Key", "Marker Pen"],
+    sliders: [
+      { id: "keys", label: "Leütések száma", min: 1, max: 24, step: 1, def: 10 },
+      { id: "speed", label: "Sebesség", min: 0.5, max: 2, step: 0.05, def: 1 },
+      { id: "pitch", label: "Hangmagasság", min: 0.6, max: 1.6, step: 0.05, def: 1 },
+    ],
+    duration: (p) => {
+      const n = p.variant === "Single Key" ? 1 : p.keys;
+      return (n * 0.1) / p.speed + (p.variant === "Typewriter" ? 0.9 : 0.35);
+    },
+    build: (ctx, p) => {
+      const v = p.variant;
+      const n = v === "Single Key" ? 1 : Math.round(p.keys);
+      let t = 0.02;
+      for (let i = 0; i < n; i++) {
+        const isSpace = n > 5 && i > 0 && i % 7 === 0;
+        if (v === "Mechanical") {
+          noiseBurst(ctx, t, 0.018, R(2600, 4200) * p.pitch, 2.5, 0.75, ctx.destination);
+          partial(ctx, t, R(3000, 3600) * p.pitch, 0.045, 0.18, ctx.destination);
+          thump(ctx, t + 0.01, 320 * p.pitch, 160, 0.035, 0.3, ctx.destination);
+        } else if (v === "Membrane") {
+          noiseBurst(ctx, t, 0.02, R(1200, 2200) * p.pitch, 1.5, 0.5, ctx.destination);
+          thump(ctx, t, 260 * p.pitch, 140, 0.04, 0.25, ctx.destination);
+        } else if (v === "Laptop") {
+          noiseBurst(ctx, t, 0.012, R(3000, 5000) * p.pitch, 3, 0.45, ctx.destination);
+        } else if (v === "Typewriter") {
+          noiseBurst(ctx, t, 0.02, R(2000, 3000) * p.pitch, 2, 0.8, ctx.destination);
+          thump(ctx, t + 0.005, 420 * p.pitch, 180, 0.05, 0.55, ctx.destination);
+        } else if (v === "Marker Pen") {
+          const strokeDur = R(0.08, 0.16) / p.speed;
+          const src = noiseSrc(ctx, strokeDur + 0.02);
+          const bp = ctx.createBiquadFilter();
+          bp.type = "bandpass";
+          bp.frequency.value = R(2800, 5200) * p.pitch;
+          bp.Q.value = R(1.5, 3);
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0.0001, t);
+          g.gain.linearRampToValueAtTime(R(0.25, 0.5), t + strokeDur * 0.3);
+          g.gain.linearRampToValueAtTime(0.0001, t + strokeDur);
+          src.connect(bp).connect(g).connect(ctx.destination);
+          src.start(t);
+        } else {
+          noiseBurst(ctx, t, 0.018, 3400 * p.pitch, 2.5, 0.8, ctx.destination);
+          partial(ctx, t, 3300 * p.pitch, 0.05, 0.2, ctx.destination);
+        }
+        if (isSpace && v !== "Marker Pen") {
+          thump(ctx, t + 0.02, 200 * p.pitch, 110, 0.06, 0.5, ctx.destination);
+        }
+        t += v === "Marker Pen" ? R(0.06, 0.1) / p.speed : R(0.07, 0.13) / p.speed;
+      }
+      if (v === "Typewriter" && n > 6) {
+        partial(ctx, t + 0.1, 2093 * p.pitch, 0.6, 0.4, ctx.destination);
+        partial(ctx, t + 0.1, 2093 * 2.7 * p.pitch, 0.35, 0.15, ctx.destination);
+        noiseBurst(ctx, t + 0.35, 0.25, 900, 1, 0.3, ctx.destination);
+      }
+    },
+  },
+  {
+    id: "money",
+    name: "Money",
+    desc: "Pénz hangok — árazás, bevétel, ajánlat témákhoz",
+    variants: ["Coin Drop", "Coin Pour", "Cash Register", "Bill Counting"],
+    sliders: [
+      { id: "pitch", label: "Hangmagasság", min: 0.6, max: 1.6, step: 0.05, def: 1 },
+      { id: "amount", label: "Mennyiség", min: 0.3, max: 1.5, step: 0.05, def: 1 },
+    ],
+    duration: (p) => ({ "Coin Drop": 0.9, "Coin Pour": 1.6, "Cash Register": 2.2, "Bill Counting": 1.6 }[p.variant]),
+    build: (ctx, p) => {
+      const v = p.variant;
+      const clink = (t, g = 0.5) => {
+        const f = R(2800, 3600) * p.pitch;
+        partial(ctx, t, f, R(0.06, 0.13), g, ctx.destination);
+        partial(ctx, t, f * 1.483, R(0.05, 0.1), g * 0.55, ctx.destination);
+        partial(ctx, t, f * 1.932, R(0.04, 0.08), g * 0.35, ctx.destination);
+      };
+      if (v === "Coin Drop") {
+        let t = 0.02, iv = 0.2;
+        const bounces = Math.round(3 + p.amount * 3);
+        for (let i = 0; i < bounces; i++) {
+          clink(t, 0.55 * Math.pow(0.75, i));
+          t += iv;
+          iv *= 0.62;
+        }
+      } else if (v === "Coin Pour") {
+        const n = Math.round(14 * p.amount + 6);
+        for (let i = 0; i < n; i++) clink(R(0, 1.35), R(0.15, 0.45));
+      } else if (v === "Cash Register") {
+        const f = 1750 * p.pitch;
+        partial(ctx, 0.02, f, 1.8, 0.5, ctx.destination);
+        partial(ctx, 0.02, f * 2.67, 1.3, 0.28, ctx.destination);
+        partial(ctx, 0.02, f * 3.98, 0.9, 0.16, ctx.destination);
+        partial(ctx, 0.1, f * 1.02, 1.5, 0.35, ctx.destination);
+        noiseBurst(ctx, 0.22, 0.18, 300, 1, 0.45 * p.amount, ctx.destination);
+        thump(ctx, 0.24, 130, 60, 0.15, 0.6 * p.amount, ctx.destination);
+        if (p.amount > 0.8) clink(0.42, 0.3);
+      } else {
+        const n = Math.round(16 * p.amount + 8);
+        let t = 0.02;
+        for (let i = 0; i < n; i++) {
+          noiseBurst(ctx, t, 0.016, R(1100, 1700) * p.pitch, 2, 0.5, ctx.destination);
+          t += R(0.055, 0.08);
+        }
+        thump(ctx, t + 0.05, 220, 120, 0.06, 0.4, ctx.destination);
+      }
+    },
+  },
+  {
+    id: "camera",
+    name: "Camera Shutter",
+    desc: "Fotó pillanatok, before/after, portfolió",
+    variants: ["Shutter Click 1", "Shutter Click 2", "Flash", "Shutter + Flash Combo", "Burst Mode"],
+    sliders: [
+      { id: "pitch", label: "Hangmagasság", min: 0.6, max: 1.6, step: 0.05, def: 1 },
+      { id: "mech", label: "Mechanikusság", min: 0.3, max: 1.5, step: 0.05, def: 1 },
+    ],
+    duration: (p) => ({ "Shutter Click 1": 0.35, "Shutter Click 2": 0.2, Flash: 0.45, "Shutter + Flash Combo": 0.4, "Burst Mode": 0.75 }[p.variant]),
+    build: (ctx, p) => {
+      const v = p.variant;
+      const M = p.mech;
+
+      const click1 = (t) => {
+        noiseBurst(ctx, t, 0.012, 3600 * p.pitch, 2.5, 0.55 * M, ctx.destination);
+        thump(ctx, t, 220 * p.pitch, 90, 0.03, 0.3 * M, ctx.destination);
+        noiseBurst(ctx, t + 0.05, 0.008, 2400 * p.pitch, 2, 0.18 * M, ctx.destination);
+        noiseBurst(ctx, t + 0.14, 0.016, 3400 * p.pitch, 2.2, 0.75 * M, ctx.destination);
+        thump(ctx, t + 0.14, 170 * p.pitch, 70, 0.05, 0.4 * M, ctx.destination);
+      };
+      const click2 = (t, gain = 1) => {
+        noiseBurst(ctx, t, 0.008, 9500 * p.pitch, 3.5, 0.7 * M * gain, ctx.destination);
+        partial(ctx, t, 6200 * p.pitch, 0.02, 0.12 * M * gain, ctx.destination);
+        thump(ctx, t, 260 * p.pitch, 120, 0.02, 0.15 * M * gain, ctx.destination);
+      };
+      const flash = (t) => {
+        const o = ctx.createOscillator();
+        o.type = "triangle";
+        o.frequency.setValueAtTime(750 * p.pitch, t);
+        o.frequency.exponentialRampToValueAtTime(2200 * p.pitch, t + 0.2);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.18, t + 0.18);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.21);
+        o.connect(g).connect(ctx.destination);
+        o.start(t);
+        o.stop(t + 0.22);
+
+        noiseBurst(ctx, t + 0.2, 0.02, 6000 * p.pitch, 1.4, 0.85 * M, ctx.destination);
+        thump(ctx, t + 0.2, 160 * p.pitch, 60, 0.05, 0.4 * M, ctx.destination);
+        partial(ctx, t + 0.2, 4200 * p.pitch, 0.12, 0.1, ctx.destination);
+      };
+      const flashPop = (t) => {
+        noiseBurst(ctx, t, 0.02, 6200 * p.pitch, 1.4, 0.8 * M, ctx.destination);
+        thump(ctx, t, 160 * p.pitch, 60, 0.05, 0.35 * M, ctx.destination);
+        partial(ctx, t, 4200 * p.pitch, 0.14, 0.1, ctx.destination);
+      };
+
+      if (v === "Shutter Click 1") click1(0.02);
+      else if (v === "Shutter Click 2") click2(0.02);
+      else if (v === "Flash") flash(0);
+      else if (v === "Shutter + Flash Combo") {
+        click1(0.02);
+        flashPop(0.06);
+      } else {
+        for (let i = 0; i < 6; i++) click2(0.02 + i * 0.11, i === 0 ? 1 : 0.8);
+      }
+    },
+  },
+  {
+    id: "notification",
+    name: "Notifications",
+    desc: "Értesítés hangok — üzenet, DM, komment megjelenítéshez",
+    variants: ["Ding", "Double Pop", "Tri-Tone", "Bubble", "Bell", "Chime Up"],
+    sliders: [
+      { id: "pitch", label: "Hangmagasság", min: 0.6, max: 1.8, step: 0.05, def: 1 },
+      { id: "bright", label: "Fényesség", min: 0.3, max: 1.5, step: 0.05, def: 1 },
+      { id: "speed", label: "Sebesség", min: 0.6, max: 1.6, step: 0.05, def: 1 },
+    ],
+    duration: (p) => ({ Ding: 0.9, "Double Pop": 0.5, "Tri-Tone": 0.8, Bubble: 0.35, Bell: 1.6, "Chime Up": 0.9 }[p.variant] / Math.min(p.speed, 1) + 0.2),
+    build: (ctx, p) => {
+      const v = p.variant;
+      const tone = (t, f, dur, g = 0.5) => {
+        partial(ctx, t, f, dur, g, ctx.destination);
+        partial(ctx, t, f * 2, dur * 0.7, g * 0.3 * p.bright, ctx.destination);
+        partial(ctx, t, f * 3, dur * 0.5, g * 0.12 * p.bright, ctx.destination);
+      };
+      const base = 1046 * p.pitch;
+      if (v === "Ding") tone(0.02, base * 1.26, 0.8, 0.55);
+      else if (v === "Double Pop") {
+        tone(0.02, base, 0.25, 0.5);
+        tone(0.02 + 0.13 / p.speed, base * 1.26, 0.3, 0.55);
+      } else if (v === "Tri-Tone") {
+        tone(0.02, base, 0.3, 0.5);
+        tone(0.02 + 0.12 / p.speed, base * 1.26, 0.3, 0.5);
+        tone(0.02 + 0.24 / p.speed, base * 1.5, 0.4, 0.55);
+      } else if (v === "Bubble") {
+        const o = ctx.createOscillator();
+        o.type = "sine";
+        o.frequency.setValueAtTime(base * 0.4, 0.02);
+        o.frequency.exponentialRampToValueAtTime(base * 0.9, 0.02 + 0.1 / p.speed);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.55, 0.022);
+        g.gain.exponentialRampToValueAtTime(0.0001, 0.02 + 0.18 / p.speed);
+        o.connect(g).connect(ctx.destination);
+        o.start(0.02);
+        o.stop(0.4);
+      } else if (v === "Bell") {
+        const f = base * 0.8;
+        [1, 2.4, 3.9, 5.4].forEach((m, i) =>
+          partial(ctx, 0.02, f * m, 1.5 - i * 0.25, [0.5, 0.25, 0.14, 0.08][i] * (i ? p.bright : 1), ctx.destination)
+        );
+      } else {
+        [1, 1.26, 1.5, 2].forEach((m, i) =>
+          tone(0.02 + (i * 0.09) / p.speed, base * m, 0.35, 0.45)
+        );
+      }
+    },
+  },
+  {
+    id: "futuristic",
+    name: "Futuristic",
+    desc: "Sci-fi hangeffektek — lézerek, energiamezők, HUD-ok, teleportálás",
+    variants: ["Laser", "Energy Charge", "Teleport", "Force Field", "Hologram", "Sci-Fi UI"],
+    sliders: [
+      { id: "len", label: "Hossz", min: 0.2, max: 2.5, step: 0.05, def: 0.6, unit: "s" },
+      { id: "pitch", label: "Hangmagasság", min: 0.5, max: 2, step: 0.05, def: 1 },
+      { id: "energy", label: "Energia", min: 0.3, max: 1.5, step: 0.05, def: 1 },
+    ],
+    duration: (p) => {
+      if (p.variant === "Force Field") return p.len + 1.3;
+      if (p.variant === "Energy Charge" || p.variant === "Teleport") return p.len + 0.3;
+      return p.len + 0.15;
+    },
+    build: (ctx, p) => {
+      const v = p.variant;
+      const L = p.len;
+
+      if (v === "Laser") {
+        const o = ctx.createOscillator();
+        o.type = "sawtooth";
+        o.frequency.setValueAtTime(3200 * p.pitch, 0);
+        o.frequency.exponentialRampToValueAtTime(180 * p.pitch, L * 0.8);
+        const lp = ctx.createBiquadFilter();
+        lp.type = "lowpass";
+        lp.frequency.setValueAtTime(6000, 0);
+        lp.frequency.exponentialRampToValueAtTime(800, L);
+        lp.Q.value = 4 * p.energy;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, 0);
+        g.gain.exponentialRampToValueAtTime(0.7 * p.energy, 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, L * 0.85);
+        o.connect(lp).connect(g).connect(ctx.destination);
+        o.start(0);
+        o.stop(L + 0.1);
+        noiseBurst(ctx, 0, 0.01, 5000 * p.pitch, 3, 0.2 * p.energy, ctx.destination);
+      } else if (v === "Energy Charge") {
+        const o = ctx.createOscillator();
+        o.type = "sawtooth";
+        o.frequency.setValueAtTime(90 * p.pitch, 0);
+        o.frequency.exponentialRampToValueAtTime(1400 * p.pitch, L);
+        const lp = ctx.createBiquadFilter();
+        lp.type = "lowpass";
+        lp.frequency.setValueAtTime(300, 0);
+        lp.frequency.exponentialRampToValueAtTime(4000 * p.energy, L);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.001, 0);
+        g.gain.exponentialRampToValueAtTime(0.7 * p.energy, L * 0.95);
+        g.gain.linearRampToValueAtTime(0.0001, L + 0.05);
+        o.connect(lp).connect(g).connect(ctx.destination);
+        o.start(0);
+        o.stop(L + 0.2);
+
+        const o2 = ctx.createOscillator();
+        o2.type = "sine";
+        o2.frequency.setValueAtTime(270 * p.pitch, 0);
+        o2.frequency.exponentialRampToValueAtTime(4200 * p.pitch, L);
+        const g2 = ctx.createGain();
+        g2.gain.setValueAtTime(0.001, 0);
+        g2.gain.exponentialRampToValueAtTime(0.25 * p.energy, L * 0.95);
+        g2.gain.linearRampToValueAtTime(0.0001, L + 0.05);
+        o2.connect(g2).connect(ctx.destination);
+        o2.start(0);
+        o2.stop(L + 0.2);
+
+        noiseBurst(ctx, L * 0.95, 0.08, 3000 * p.pitch, 2, 0.5 * p.energy, ctx.destination);
+      } else if (v === "Teleport") {
+        const src = noiseSrc(ctx, L + 0.1);
+        const bp = ctx.createBiquadFilter();
+        bp.type = "bandpass";
+        bp.Q.value = 6 * p.energy;
+        bp.frequency.setValueAtTime(400 * p.pitch, 0);
+        bp.frequency.exponentialRampToValueAtTime(6000 * p.pitch, L * 0.5);
+        bp.frequency.exponentialRampToValueAtTime(200 * p.pitch, L);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, 0);
+        g.gain.exponentialRampToValueAtTime(0.6 * p.energy, L * 0.45);
+        g.gain.exponentialRampToValueAtTime(0.0001, L);
+        src.connect(bp).connect(g).connect(ctx.destination);
+        src.start(0);
+
+        [1, 1.5, 2.01].forEach((r) => {
+          const o = ctx.createOscillator();
+          o.type = "sine";
+          o.frequency.setValueAtTime(500 * r * p.pitch, 0);
+          o.frequency.exponentialRampToValueAtTime(3000 * r * p.pitch, L * 0.5);
+          o.frequency.exponentialRampToValueAtTime(150 * r * p.pitch, L);
+          const og = ctx.createGain();
+          og.gain.setValueAtTime(0.0001, 0);
+          og.gain.exponentialRampToValueAtTime(0.18 * p.energy, L * 0.45);
+          og.gain.exponentialRampToValueAtTime(0.0001, L);
+          o.connect(og).connect(ctx.destination);
+          o.start(0);
+          o.stop(L + 0.15);
+        });
+      } else if (v === "Force Field") {
+        const verb = makeReverb(ctx, 1.2, 2.2);
+        const wet = ctx.createGain();
+        wet.gain.value = 0.3;
+        verb.connect(wet).connect(ctx.destination);
+        const out = (n) => { n.connect(ctx.destination); n.connect(verb); };
+
+        const o = ctx.createOscillator();
+        o.type = "sawtooth";
+        o.frequency.value = 65 * p.pitch;
+        const lfo = ctx.createOscillator();
+        lfo.type = "sine";
+        lfo.frequency.value = 5 * p.energy;
+        const lfoGain = ctx.createGain();
+        lfoGain.gain.value = 300;
+        const lp = ctx.createBiquadFilter();
+        lp.type = "lowpass";
+        lp.frequency.value = 500;
+        lp.Q.value = 8;
+        lfo.connect(lfoGain).connect(lp.frequency);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, 0);
+        g.gain.linearRampToValueAtTime(0.5 * p.energy, 0.1);
+        g.gain.setValueAtTime(0.5 * p.energy, Math.max(0.1, L - 0.1));
+        g.gain.linearRampToValueAtTime(0.0001, L);
+        o.connect(lp).connect(g);
+        out(g);
+        o.start(0);
+        o.stop(L + 0.1);
+        lfo.start(0);
+        lfo.stop(L + 0.1);
+      } else if (v === "Hologram") {
+        const n = Math.round(8 * p.energy + 5);
+        for (let i = 0; i < n; i++) {
+          const t = R(0, L * 0.9);
+          const f = R(600, 3200) * p.pitch;
+          partial(ctx, t, f, R(0.03, 0.09), R(0.15, 0.3), ctx.destination, "sine");
+          if (Math.random() < 0.4) noiseBurst(ctx, t, 0.01, f * 2, 4, 0.15, ctx.destination);
+        }
+        const o = ctx.createOscillator();
+        o.type = "sine";
+        o.frequency.value = 220 * p.pitch;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, 0);
+        g.gain.linearRampToValueAtTime(0.12 * p.energy, 0.05);
+        g.gain.setValueAtTime(0.12 * p.energy, Math.max(0.05, L - 0.05));
+        g.gain.linearRampToValueAtTime(0.0001, L);
+        o.connect(g).connect(ctx.destination);
+        o.start(0);
+        o.stop(L + 0.05);
+      } else {
+        const scale = L / 0.6;
+        const beep = (t, f0, f1, dur, gv) => {
+          const o = ctx.createOscillator();
+          o.type = "square";
+          o.frequency.setValueAtTime(f0 * p.pitch, t);
+          o.frequency.exponentialRampToValueAtTime(f1 * p.pitch, t + dur);
+          const lp = ctx.createBiquadFilter();
+          lp.type = "lowpass";
+          lp.frequency.value = 4000;
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0.0001, t);
+          g.gain.exponentialRampToValueAtTime(gv * p.energy, t + 0.01);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+          o.connect(lp).connect(g).connect(ctx.destination);
+          o.start(t);
+          o.stop(t + dur + 0.02);
+        };
+        beep(0, 900, 1400, 0.08 * scale, 0.4);
+        beep(0.1 * scale, 1200, 900, 0.06 * scale, 0.35);
+        beep(0.19 * scale, 1600, 2000, 0.1 * scale, 0.4);
+      }
+    },
+  },
+  {
+    id: "instruments",
+    name: "Instrumentals",
+    desc: "Hangszerhangok — zongora, gitár, vonósok, dobok, fuvola",
+    variants: ["Piano", "Guitar", "Violin", "Cello", "Drums", "Flute"],
+    sliders: [
+      { id: "len", label: "Hossz", min: 0.3, max: 3, step: 0.05, def: 1.2, unit: "s" },
+      { id: "pitch", label: "Hangmagasság", min: 0.5, max: 2, step: 0.05, def: 1 },
+      { id: "tone", label: "Hangszín", min: 0.3, max: 1.5, step: 0.05, def: 1 },
+    ],
+    duration: (p) => {
+      if (p.variant === "Guitar") return p.len + 0.6;
+      if (p.variant === "Piano") return p.len + 0.4;
+      if (p.variant === "Drums") return p.len + 0.3;
+      return p.len + 0.35;
+    },
+    build: (ctx, p) => {
+      const v = p.variant;
+      const L = p.len;
+      const bright = p.tone;
+
+      if (v === "Piano") {
+        const f0 = 261.63 * p.pitch;
+        const dur = L + 0.2;
+        [
+          [1, 0.5],
+          [2, 0.28 * bright],
+          [3, 0.16 * bright],
+          [4, 0.1 * bright * bright],
+          [5, 0.06 * bright * bright],
+          [6.02, 0.04 * bright * bright],
+        ].forEach(([r, g]) => {
+          partial(ctx, 0.01, f0 * r, dur * (1 - (r - 1) * 0.08), g, ctx.destination, "sine");
+        });
+        noiseBurst(ctx, 0, 0.012, f0 * 3, 3, 0.12 + 0.08 * bright, ctx.destination);
+      } else if (v === "Guitar") {
+        const f0 = 196 * p.pitch;
+        pluckTone(ctx, 0.01, f0, L + 0.3, 0.5, bright, ctx.destination, -3);
+        pluckTone(ctx, 0.012, f0, L + 0.25, 0.35, bright, ctx.destination, 3);
+        noiseBurst(ctx, 0.005, 0.012, f0 * 4, 2, 0.35, ctx.destination);
+      } else if (v === "Violin") {
+        bowedString(ctx, 0, 440 * p.pitch, L, bright, ctx.destination, false);
+      } else if (v === "Cello") {
+        bowedString(ctx, 0, 110 * p.pitch, L, bright, ctx.destination, true);
+      } else if (v === "Flute") {
+        fluteTone(ctx, 0, 523.25 * p.pitch, L, bright, ctx.destination);
+      } else {
+        const scale = Math.max(0.15, L / 4);
+        const t0 = 0.02;
+        thump(ctx, t0, 150 * p.pitch, 50, 0.12, 1.0, ctx.destination);
+        noiseBurst(ctx, t0 + scale, 0.02, 8000 * bright, 2, 0.35, ctx.destination);
+        thump(ctx, t0 + scale * 2, 130 * p.pitch, 55, 0.06, 0.5, ctx.destination);
+        noiseBurst(ctx, t0 + scale * 2, 0.08, 1800, 1.2, 0.7, ctx.destination);
+        noiseBurst(ctx, t0 + scale * 3, 0.02, 8000 * bright, 2, 0.35, ctx.destination);
+      }
+    },
+  },
+  {
+    id: "ui-sounds",
+    name: "UI Sounds",
+    desc: "App-visszajelzések — siker, hiba, jutalom, töltés",
+    variants: ["Success", "Failure", "Bubble Pop", "Loading", "Reward", "Slowdown"],
+    sliders: [
+      { id: "pitch", label: "Hangmagasság", min: 0.6, max: 1.8, step: 0.05, def: 1 },
+      { id: "energy", label: "Energia", min: 0.3, max: 1.5, step: 0.05, def: 1 },
+    ],
+    duration: (p) => ({ Success: 0.7, Failure: 0.25, "Bubble Pop": 0.25, Loading: 0.9, Reward: 0.75, Slowdown: 1.4 }[p.variant]),
+    build: (ctx, p) => {
+      const v = p.variant;
+      const E = p.energy;
+
+      if (v === "Success") {
+        const base = 440 * p.pitch;
+        [0, 4, 7].forEach((semi, i) => {
+          const f = base * Math.pow(2, semi / 12);
+          const t = i * 0.08;
+          partial(ctx, t, f, 0.35, 0.4 * E, ctx.destination, "triangle");
+          partial(ctx, t, f * 2, 0.2, 0.12 * E, ctx.destination);
+        });
+        noiseBurst(ctx, 0.2, 0.15, 6000 * p.pitch, 1.5, 0.15 * E, ctx.destination);
+      } else if (v === "Failure") {
+        const o = ctx.createOscillator();
+        o.type = "sawtooth";
+        o.frequency.setValueAtTime(220 * p.pitch, 0);
+        o.frequency.exponentialRampToValueAtTime(90 * p.pitch, 0.18);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.5 * E, 0);
+        g.gain.exponentialRampToValueAtTime(0.0001, 0.2);
+        const ws = softClip(ctx, 2.5);
+        o.connect(ws).connect(g).connect(ctx.destination);
+        o.start(0);
+        o.stop(0.22);
+        noiseBurst(ctx, 0, 0.03, 400 * p.pitch, 1.5, 0.3 * E, ctx.destination);
+      } else if (v === "Bubble Pop") {
+        const o = ctx.createOscillator();
+        o.type = "sine";
+        o.frequency.setValueAtTime(1400 * p.pitch, 0);
+        o.frequency.exponentialRampToValueAtTime(2600 * p.pitch, 0.03);
+        o.frequency.exponentialRampToValueAtTime(500 * p.pitch, 0.09);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.5 * E, 0);
+        g.gain.exponentialRampToValueAtTime(0.0001, 0.1);
+        o.connect(g).connect(ctx.destination);
+        o.start(0);
+        o.stop(0.12);
+
+        const o2 = ctx.createOscillator();
+        o2.type = "sine";
+        o2.frequency.setValueAtTime(2000 * p.pitch, 0.13);
+        o2.frequency.exponentialRampToValueAtTime(3200 * p.pitch, 0.15);
+        const g2 = ctx.createGain();
+        g2.gain.setValueAtTime(0.2 * E, 0.13);
+        g2.gain.exponentialRampToValueAtTime(0.0001, 0.19);
+        o2.connect(g2).connect(ctx.destination);
+        o2.start(0.13);
+        o2.stop(0.2);
+      } else if (v === "Loading") {
+        const n = 6;
+        for (let i = 0; i < n; i++) {
+          const t = i * 0.12;
+          partial(ctx, t, (2400 + i * 150) * p.pitch, 0.06, 0.2 * E, ctx.destination);
+          noiseBurst(ctx, t, 0.01, 8000 * p.pitch, 3, 0.15 * E, ctx.destination);
+        }
+      } else if (v === "Reward") {
+        const base = 523.25 * p.pitch;
+        [0, 4, 7, 12, 16].forEach((semi, i) => {
+          const f = base * Math.pow(2, semi / 12);
+          const t = i * 0.09;
+          partial(ctx, t, f, 0.4, 0.35 * E, ctx.destination, "triangle");
+          partial(ctx, t, f * 2, 0.2, 0.1 * E, ctx.destination);
+        });
+      } else {
+        const L = 1.2;
+        let t = 0.02;
+        let gap = 0.03;
+        while (t < L) {
+          noiseBurst(ctx, t, 0.012, R(2500, 3200) * p.pitch, 3, 0.4 * E * Math.max(0.2, 1 - t / L), ctx.destination);
+          t += gap;
+          gap *= 1.18;
+        }
+      }
+    },
+  },
+  {
+    id: "ambience",
+    name: "Ambience / Drone",
+    desc: "Térbeli alapzajok — űrhajó-moraj, eső, szél, feszültségkeltő pad",
+    variants: ["Spaceship Hum", "Rain", "Wind", "Deep Drone", "Tension Pad"],
+    sliders: [
+      { id: "len", label: "Hossz", min: 2, max: 14, step: 0.5, def: 6, unit: "s" },
+      { id: "tone", label: "Hangszín", min: 0.3, max: 2, step: 0.05, def: 1 },
+      { id: "intensity", label: "Intenzitás", min: 0.3, max: 1.5, step: 0.05, def: 1 },
+    ],
+    duration: (p) => p.len + 0.5,
+    build: (ctx, p) => {
+      const v = p.variant;
+      const L = p.len, I = p.intensity, T = p.tone;
+      if (v === "Spaceship Hum") {
+        [55, 110, 164].forEach((f, i) => {
+          const o = ctx.createOscillator();
+          o.type = i === 0 ? "sine" : "sawtooth";
+          o.frequency.value = f * T;
+          o.detune.value = R(-6, 6);
+          const lp = ctx.createBiquadFilter();
+          lp.type = "lowpass";
+          lp.frequency.value = 400 + i * 200;
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0.0001, 0);
+          g.gain.linearRampToValueAtTime((0.22 * I) / (i + 1), 0.8);
+          g.gain.setValueAtTime((0.22 * I) / (i + 1), Math.max(0.81, L - 0.6));
+          g.gain.linearRampToValueAtTime(0.0001, L);
+          const lfo = ctx.createOscillator();
+          lfo.type = "sine";
+          lfo.frequency.value = R(0.1, 0.35);
+          const lfoGain = ctx.createGain();
+          lfoGain.gain.value = 6;
+          lfo.connect(lfoGain).connect(o.detune);
+          lfo.start(0);
+          lfo.stop(L + 0.1);
+          o.connect(lp).connect(g).connect(ctx.destination);
+          o.start(0);
+          o.stop(L + 0.1);
+        });
+        const hiss = noiseSrc(ctx, L);
+        const hp = ctx.createBiquadFilter();
+        hp.type = "highpass";
+        hp.frequency.value = 3000;
+        const hg = ctx.createGain();
+        hg.gain.setValueAtTime(0.0001, 0);
+        hg.gain.linearRampToValueAtTime(0.04 * I, 0.5);
+        hg.gain.setValueAtTime(0.04 * I, Math.max(0.51, L - 0.4));
+        hg.gain.linearRampToValueAtTime(0.0001, L);
+        hiss.connect(hp).connect(hg).connect(ctx.destination);
+        hiss.start(0);
+      } else if (v === "Rain") {
+        const bed = noiseSrc(ctx, L);
+        const bp = ctx.createBiquadFilter();
+        bp.type = "bandpass";
+        bp.frequency.value = 3200 * T;
+        bp.Q.value = 0.6;
+        const bg = ctx.createGain();
+        bg.gain.setValueAtTime(0.0001, 0);
+        bg.gain.linearRampToValueAtTime(0.18 * I, 0.6);
+        bg.gain.setValueAtTime(0.18 * I, Math.max(0.61, L - 0.5));
+        bg.gain.linearRampToValueAtTime(0.0001, L);
+        bed.connect(bp).connect(bg).connect(ctx.destination);
+        bed.start(0);
+        let t = 0.1;
+        while (t < L - 0.1) {
+          noiseBurst(ctx, t, 0.02, R(3500, 7000) * T, R(2, 5), R(0.05, 0.15) * I, ctx.destination);
+          t += R(0.02, 0.09);
+        }
+      } else if (v === "Wind") {
+        const src = noiseSrc(ctx, L);
+        const lp = ctx.createBiquadFilter();
+        lp.type = "lowpass";
+        lp.Q.value = 4;
+        lp.frequency.setValueAtTime(300 * T, 0);
+        const lfo = ctx.createOscillator();
+        lfo.type = "sine";
+        lfo.frequency.value = 0.15;
+        const lfoGain = ctx.createGain();
+        lfoGain.gain.value = 220 * T;
+        lfo.connect(lfoGain).connect(lp.frequency);
+        lfo.start(0);
+        lfo.stop(L + 0.1);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, 0);
+        g.gain.linearRampToValueAtTime(0.5 * I, 0.8);
+        g.gain.setValueAtTime(0.5 * I, Math.max(0.81, L - 0.6));
+        g.gain.linearRampToValueAtTime(0.0001, L);
+        src.connect(lp).connect(g).connect(ctx.destination);
+        src.start(0);
+      } else if (v === "Deep Drone") {
+        [1, 1.5, 2.01, 3.02].forEach((r, i) => {
+          const o = ctx.createOscillator();
+          o.type = "sine";
+          o.frequency.value = 48 * r * T;
+          o.detune.value = R(-4, 4);
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0.0001, 0);
+          g.gain.linearRampToValueAtTime((0.3 / (i + 1)) * I, 1);
+          g.gain.setValueAtTime((0.3 / (i + 1)) * I, Math.max(1.01, L - 0.8));
+          g.gain.linearRampToValueAtTime(0.0001, L);
+          o.connect(g).connect(ctx.destination);
+          o.start(0);
+          o.stop(L + 0.1);
+        });
+      } else {
+        const verb = makeReverb(ctx, 2, 2);
+        const wet = ctx.createGain();
+        wet.gain.value = 0.3;
+        verb.connect(wet).connect(ctx.destination);
+        [0, -5, 7, 12].forEach((semi, i) => {
+          const f = 110 * Math.pow(2, semi / 12) * T;
+          const o = ctx.createOscillator();
+          o.type = "sawtooth";
+          o.frequency.value = f;
+          const lp = ctx.createBiquadFilter();
+          lp.type = "lowpass";
+          lp.Q.value = 1;
+          lp.frequency.setValueAtTime(300, 0);
+          lp.frequency.linearRampToValueAtTime(1200 * I, L * 0.7);
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0.0001, 0);
+          g.gain.linearRampToValueAtTime((0.18 / (i * 0.5 + 1)) * I, 1.2);
+          g.gain.setValueAtTime((0.18 / (i * 0.5 + 1)) * I, Math.max(1.21, L - 0.8));
+          g.gain.linearRampToValueAtTime(0.0001, L);
+          o.connect(lp).connect(g);
+          g.connect(ctx.destination);
+          g.connect(verb);
+          o.start(0);
+          o.stop(L + 0.1);
+        });
+      }
+    },
+  },
+  {
+    id: "retro",
+    name: "Retro Gaming (8-bit)",
+    desc: "Klasszikus árkád ugrás, érme, lézer és robbanás hangok négyszöghullámmal",
+    variants: ["Jump", "Coin", "Laser", "Explosion", "Power Up", "Game Over"],
+    sliders: [
+      { id: "pitch", label: "Hangmagasság", min: 0.5, max: 2, step: 0.05, def: 1 },
+      { id: "speed", label: "Sebesség", min: 0.5, max: 2, step: 0.05, def: 1 },
+    ],
+    duration: (p) =>
+      ({ Jump: 0.25, Coin: 0.3, Laser: 0.3, Explosion: 0.6, "Power Up": 0.5, "Game Over": 1.1 }[p.variant]) / p.speed + 0.15,
+    build: (ctx, p) => {
+      const v = p.variant;
+      const S = p.speed;
+      const sq = (t, freq, dur, gainVal) => {
+        const o = ctx.createOscillator();
+        o.type = "square";
+        o.frequency.value = freq;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(gainVal, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.connect(g).connect(ctx.destination);
+        o.start(t);
+        o.stop(t + dur + 0.02);
+      };
+      const sqSweep = (t, f0, f1, dur, gainVal) => {
+        const o = ctx.createOscillator();
+        o.type = "square";
+        o.frequency.setValueAtTime(f0, t);
+        o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(gainVal, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.connect(g).connect(ctx.destination);
+        o.start(t);
+        o.stop(t + dur + 0.02);
+      };
+
+      if (v === "Jump") {
+        sqSweep(0, 260 * p.pitch, 700 * p.pitch, 0.18 / S, 0.5);
+      } else if (v === "Coin") {
+        sq(0, 1400 * p.pitch, 0.08 / S, 0.45);
+        sq(0.07 / S, 1900 * p.pitch, 0.18 / S, 0.4);
+      } else if (v === "Laser") {
+        sqSweep(0, 1800 * p.pitch, 200 * p.pitch, 0.22 / S, 0.4);
+        noiseBurst(ctx, 0, 0.03, 4000 * p.pitch, 3, 0.15, ctx.destination);
+      } else if (v === "Explosion") {
+        const dur = 0.5 / S;
+        const src = noiseSrc(ctx, dur + 0.05);
+        const lp = ctx.createBiquadFilter();
+        lp.type = "lowpass";
+        lp.frequency.setValueAtTime(3500 * p.pitch, 0);
+        lp.frequency.exponentialRampToValueAtTime(100, dur);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.8, 0);
+        g.gain.exponentialRampToValueAtTime(0.0001, dur);
+        src.connect(lp).connect(g).connect(ctx.destination);
+        src.start(0);
+        sqSweep(0, 120 * p.pitch, 30, dur * 0.8, 0.5);
+      } else if (v === "Power Up") {
+        const n = 6;
+        for (let i = 0; i < n; i++) {
+          const t = (i * 0.06) / S;
+          sq(t, (300 + i * 110) * p.pitch, 0.08 / S, 0.35);
+        }
+      } else {
+        [0, -2, -4, -7].forEach((semi, i) => {
+          const t = (i * 0.22) / S;
+          const f = 440 * Math.pow(2, semi / 12) * p.pitch;
+          sq(t, f, 0.28 / S, 0.4);
+        });
+      }
+    },
+  },
+];
+
+/* ---------- WAV kódolás ---------- */
+
+function bufferToWav(buffer) {
+  const numCh = buffer.numberOfChannels;
+  const len = buffer.length * numCh * 2 + 44;
+  const ab = new ArrayBuffer(len);
+  const view = new DataView(ab);
+  const writeStr = (off, s) => { for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i)); };
+  writeStr(0, "RIFF");
+  view.setUint32(4, len - 8, true);
+  writeStr(8, "WAVE");
+  writeStr(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, numCh, true);
+  view.setUint32(24, buffer.sampleRate, true);
+  view.setUint32(28, buffer.sampleRate * numCh * 2, true);
+  view.setUint16(32, numCh * 2, true);
+  view.setUint16(34, 16, true);
+  writeStr(36, "data");
+  view.setUint32(40, buffer.length * numCh * 2, true);
+  let off = 44;
+  const chans = [];
+  for (let c = 0; c < numCh; c++) chans.push(buffer.getChannelData(c));
+  for (let i = 0; i < buffer.length; i++) {
+    for (let c = 0; c < numCh; c++) {
+      let s = Math.max(-1, Math.min(1, chans[c][i]));
+      view.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+      off += 2;
+    }
+  }
+  return new Blob([ab], { type: "audio/wav" });
+}
+
+/* ---------- MP3 kódolás (lamejs) ---------- */
+
+function floatTo16Bit(channelData) {
+  const out = new Int16Array(channelData.length);
+  for (let i = 0; i < channelData.length; i++) {
+    const s = Math.max(-1, Math.min(1, channelData[i]));
+    out[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+  }
+  return out;
+}
+
+function bufferToMp3(buffer, kbps = 192) {
+  const numCh = Math.min(2, buffer.numberOfChannels);
+  const encoder = new lamejs.Mp3Encoder(numCh, buffer.sampleRate, kbps);
+  const left = floatTo16Bit(buffer.getChannelData(0));
+  const right = numCh > 1 ? floatTo16Bit(buffer.getChannelData(1)) : null;
+  const blockSize = 1152;
+  const chunks = [];
+  for (let i = 0; i < left.length; i += blockSize) {
+    const lChunk = left.subarray(i, i + blockSize);
+    const rChunk = right ? right.subarray(i, i + blockSize) : undefined;
+    const mp3buf = right ? encoder.encodeBuffer(lChunk, rChunk) : encoder.encodeBuffer(lChunk);
+    if (mp3buf.length > 0) chunks.push(mp3buf);
+  }
+  const tail = encoder.flush();
+  if (tail.length > 0) chunks.push(tail);
+  return new Blob(chunks, { type: "audio/mpeg" });
+}
+
+function normalize(buffer, target = 0.89) {
+  let peak = 0;
+  for (let c = 0; c < buffer.numberOfChannels; c++) {
+    const d = buffer.getChannelData(c);
+    for (let i = 0; i < d.length; i++) peak = Math.max(peak, Math.abs(d[i]));
+  }
+  if (peak > 0.0001) {
+    const g = target / peak;
+    for (let c = 0; c < buffer.numberOfChannels; c++) {
+      const d = buffer.getChannelData(c);
+      for (let i = 0; i < d.length; i++) d[i] *= g;
+    }
+  }
+  return buffer;
+}
+
+/* ---------- alkalmazás-állapot és felület ---------- */
+
+let catId = CATEGORIES[0].id;
+const allParams = {};
+CATEGORIES.forEach((c) => {
+  allParams[c.id] = { variant: c.variants[0] };
+  c.sliders.forEach((s) => (allParams[c.id][s.id] = s.def));
+});
+
+let audioCtx = null;
+let mediaDest = null;
+let mediaEl = null;
+let cachedBuffer = null;
+let dirty = true;
+let rendering = false;
+let currentSource = null;
+
+const el = (id) => document.getElementById(id);
+const cat = () => CATEGORIES.find((c) => c.id === catId);
+const params = () => allParams[catId];
+
+let preRenderTimer = null;
+function invalidate() {
+  dirty = true; cachedBuffer = null; drawWave(null);
+  clearTimeout(preRenderTimer);
+  preRenderTimer = setTimeout(() => { ensureBuffer(); }, 200);
+}
+
+async function renderSound() {
+  const p = params();
+  const c = cat();
+  const dur = Math.max(0.15, c.duration(p));
+  const Offline = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  const octx = new Offline(2, Math.ceil(SR * dur), SR);
+  c.build(octx, p);
+  const buf = await octx.startRendering();
+  return normalize(buf);
+}
+
+async function ensureBuffer() {
+  if (dirty || !cachedBuffer) {
+    rendering = true; updateButtons();
+    el('wavePh').textContent = 'GENERÁLÁS…';
+    el('wavePh').style.display = 'flex';
+    cachedBuffer = await renderSound();
+    dirty = false; rendering = false; updateButtons();
+    el('wavePh').style.display = 'none';
+    drawWave(cachedBuffer);
+  }
+  return cachedBuffer;
+}
+
+function drawWave(buffer) {
+  const cv = el('waveCanvas');
+  const dpr = window.devicePixelRatio || 1;
+  const w = cv.clientWidth, h = cv.clientHeight;
+  cv.width = w * dpr; cv.height = h * dpr;
+  const g = cv.getContext('2d');
+  g.scale(dpr, dpr);
+  g.clearRect(0, 0, w, h);
+  if (!buffer) {
+    el('wavePh').textContent = 'LEJÁTSZÁS UTÁN ITT JELENIK MEG A HULLÁMFORMA';
+    el('wavePh').style.display = 'flex';
+    return;
+  }
+  const d = buffer.getChannelData(0);
+  const step = Math.max(1, Math.floor(d.length / w));
+  g.strokeStyle = '#bcac8c';
+  g.lineWidth = 1.5;
+  g.shadowColor = '#bcac8c';
+  g.shadowBlur = 8;
+  g.beginPath();
+  for (let x = 0; x < w; x++) {
+    let min = 1, max = -1;
+    const start = x * step;
+    for (let i = 0; i < step && start + i < d.length; i++) {
+      const v = d[start + i];
+      if (v < min) min = v;
+      if (v > max) max = v;
+    }
+    const y1 = h / 2 + min * (h / 2 - 4);
+    const y2 = h / 2 + max * (h / 2 - 4);
+    g.moveTo(x + 0.5, y1);
+    g.lineTo(x + 0.5, Math.abs(y2 - y1) < 1 ? y1 - 1 : y2);
+  }
+  g.stroke();
+}
+
+async function play() {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!audioCtx) {
+    audioCtx = new AC();
+    mediaDest = audioCtx.createMediaStreamDestination();
+    mediaEl = new Audio();
+    mediaEl.srcObject = mediaDest.stream;
+    mediaEl.setAttribute('playsinline', '');
+    mediaEl.play().catch(() => {});
+  }
+  if (audioCtx.state === 'suspended') await audioCtx.resume();
+  if (mediaEl.paused) mediaEl.play().catch(() => {});
+  if (currentSource) { try { currentSource.stop(); } catch (e) {} }
+  const buf = await ensureBuffer();
+  const src = audioCtx.createBufferSource();
+  src.buffer = buf;
+  src.connect(mediaDest);
+  currentSource = src;
+  src.start();
+}
+
+function fileBaseName() {
+  return params().variant.replace(/[\s/+]+/g, '-').toLowerCase() + '-' + cat().id;
+}
+
+function triggerDownload(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.rel = 'noopener';
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+async function downloadWav() {
+  const buf = await ensureBuffer();
+  triggerDownload(bufferToWav(buf), fileBaseName() + '.wav');
+}
+
+async function downloadMp3() {
+  const buf = await ensureBuffer();
+  triggerDownload(bufferToMp3(buf), fileBaseName() + '.mp3');
+}
+
+/* ---------- "húzd ki" export a vágóprogramba (Chrome/Edge asztali) ---------- */
+
+function setupDragExport() {
+  const box = el('waveBox');
+  const hint = el('dragHint');
+
+  box.addEventListener('dragstart', (e) => {
+    if (rendering || !cachedBuffer) {
+      e.preventDefault();
+      hint.textContent = 'Előbb generálódik a hang…';
+      ensureBuffer().then(() => { hint.textContent = '⠿ Húzd ki fájlként (Chrome/Edge)'; });
+      return;
+    }
+    const blob = bufferToWav(cachedBuffer);
+    const url = URL.createObjectURL(blob);
+    const name = fileBaseName() + '.wav';
+    // A "DownloadURL" trükk teszi lehetővé, hogy Chrome/Edge alatt valódi
+    // fájlként lehessen a hangot közvetlenül egy vágóprogram (pl. Premiere Pro,
+    // DaVinci Resolve, CapCut) idővonalára vagy az Intézőbe/Finderbe húzni.
+    e.dataTransfer.setData('DownloadURL', `audio/wav:${name}:${url}`);
+    e.dataTransfer.effectAllowed = 'copy';
+    setTimeout(() => URL.revokeObjectURL(url), 120000);
+  });
+
+  box.addEventListener('dragend', () => {
+    hint.textContent = '⠿ Húzd ki fájlként (Chrome/Edge)';
+  });
+}
+
+function randomize() {
+  const c = cat(); const p = params();
+  c.sliders.forEach((s) => {
+    const raw = s.min + Math.random() * (s.max - s.min);
+    p[s.id] = Math.round(raw / s.step) * s.step;
+  });
+  invalidate();
+  renderSliders();
+  pushHistory();
+}
+
+/* ---------- Előzmények ---------- */
+
+let history = [];
+const HISTORY_MAX = 10;
+
+function snapshotOf() {
+  return { catId, variant: params().variant, params: { ...params() } };
+}
+
+function snapshotsEqual(a, b) {
+  return a.catId === b.catId && a.variant === b.variant &&
+    JSON.stringify(a.params) === JSON.stringify(b.params);
+}
+
+function pushHistory() {
+  const snap = snapshotOf();
+  if (history.length && snapshotsEqual(history[0], snap)) { renderHistory(); return; }
+  history.unshift(snap);
+  if (history.length > HISTORY_MAX) history.length = HISTORY_MAX;
+  renderHistory();
+}
+
+function restoreHistory(idx) {
+  const h = history[idx];
+  if (!h) return;
+  catId = h.catId;
+  allParams[catId] = { ...h.params, variant: h.variant };
+  invalidate();
+  renderAll();
+}
+
+function removeHistory(idx) {
+  history.splice(idx, 1);
+  renderHistory();
+}
+
+function clearHistory() {
+  history = [];
+  renderHistory();
+}
+
+function renderHistory() {
+  const box = el('historyBox');
+  const list = el('historyList');
+  list.innerHTML = '';
+  if (!history.length) { box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  const current = snapshotOf();
+  history.forEach((h, i) => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'history-chip' + (snapshotsEqual(h, current) ? ' current' : '');
+    const c = CATEGORIES.find((cc) => cc.id === h.catId);
+    const label = document.createElement('span');
+    label.textContent = (c ? c.name : h.catId) + ' · ' + h.variant;
+    const x = document.createElement('span');
+    x.className = 'x';
+    x.textContent = '✕';
+    x.title = 'Törlés';
+    x.onclick = (e) => { e.stopPropagation(); removeHistory(i); };
+    chip.appendChild(label);
+    chip.appendChild(x);
+    chip.onclick = () => restoreHistory(i);
+    list.appendChild(chip);
+  });
+}
+
+function updateButtons() {
+  el('btnPlay').disabled = rendering;
+  el('btnDl').disabled = rendering;
+  el('btnDlMp3').disabled = rendering;
+}
+
+function renderCats() {
+  const box = el('cats');
+  box.innerHTML = '';
+  CATEGORIES.forEach((c) => {
+    const b = document.createElement('button');
+    b.className = 'cat-btn' + (c.id === catId ? ' active' : '');
+    b.textContent = c.name;
+    b.onclick = () => { catId = c.id; invalidate(); renderAll(); pushHistory(); };
+    box.appendChild(b);
+  });
+}
+
+function renderVariants() {
+  const c = cat(); const p = params();
+  const box = el('variants');
+  box.innerHTML = '';
+  c.variants.forEach((v) => {
+    const b = document.createElement('button');
+    b.className = 'var-btn' + (v === p.variant ? ' active' : '');
+    b.textContent = v;
+    b.onclick = () => { p.variant = v; invalidate(); renderVariants(); pushHistory(); };
+    box.appendChild(b);
+  });
+}
+
+function renderSliders() {
+  const c = cat(); const p = params();
+  const box = el('sliders');
+  box.innerHTML = '';
+  c.sliders.forEach((s) => {
+    const label = document.createElement('label');
+    const head = document.createElement('div');
+    head.className = 'slider-head';
+    const nm = document.createElement('span');
+    nm.textContent = s.label;
+    const val = document.createElement('span');
+    val.className = 'slider-val';
+    const fmt = (x) => Number(x).toFixed(s.step < 1 ? 2 : 0) + (s.unit || '');
+    val.textContent = fmt(p[s.id]);
+    head.appendChild(nm); head.appendChild(val);
+    const input = document.createElement('input');
+    input.type = 'range';
+    input.min = s.min; input.max = s.max; input.step = s.step;
+    input.value = p[s.id];
+    input.oninput = () => {
+      p[s.id] = Number(input.value);
+      val.textContent = fmt(p[s.id]);
+      invalidate();
+    };
+    input.addEventListener('change', () => pushHistory());
+    label.appendChild(head); label.appendChild(input);
+    box.appendChild(label);
+  });
+}
+
+function renderAll() {
+  const c = cat();
+  el('catName').textContent = c.name;
+  el('catDesc').textContent = c.desc;
+  renderCats();
+  renderVariants();
+  renderSliders();
+  renderHistory();
+}
+
+el('btnPlay').onclick = play;
+el('btnRand').onclick = randomize;
+el('btnDl').onclick = downloadWav;
+el('btnDlMp3').onclick = downloadMp3;
+el('btnClearHistory').onclick = clearHistory;
+renderAll();
+setupDragExport();
+ensureBuffer();
+pushHistory();
+
+(function () {
+  const ua = navigator.userAgent || '';
+  const isInAppBrowser = /Instagram|FBAN|FBAV|FB_IAB|Line\/|MicroMessenger|TikTok|musical_ly/i.test(ua);
+  if (isInAppBrowser) el('iabBanner').style.display = 'block';
+})();
+</script>
+</body>
+</html>
